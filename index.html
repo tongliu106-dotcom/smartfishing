@@ -2,116 +2,188 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>渔获大师</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="manifest" href="manifest.json">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#4FACFE"> 
-    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <!-- 这一行保证手机端显示正常，禁止缩放 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>我的钓鱼日记</title>
+    <style>
+        /* === 简单的样式设计 === */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f7f6; color: #333; }
+        .page { display: none; padding: 20px; padding-bottom: 80px; }
+        .page.active { display: block; }
+        
+        /* 顶部导航栏 */
+        .header { background-color: #007bff; color: white; padding: 15px; text-align: center; font-size: 18px; font-weight: bold; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        
+        /* 卡片样式 */
+        .card { background: white; border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; align-items: center; }
+        .fish-thumb { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; margin-right: 15px; background-color: #eee; }
+        .fish-info h3 { margin: 0 0 5px 0; font-size: 16px; }
+        .fish-info p { margin: 0; color: #666; font-size: 14px; }
+        
+        /* 底部按钮 */
+        .fab { position: fixed; bottom: 25px; right: 25px; width: 60px; height: 60px; background-color: #007bff; color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 30px; box-shadow: 0 4px 10px rgba(0,123,255,0.4); cursor: pointer; user-select: none; }
+        
+        /* 表单样式 */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-control { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        
+        /* 图片上传预览 */
+        #preview-container { margin-top: 10px; text-align: center; display: none; }
+        #preview-img { max-width: 100%; max-height: 200px; border-radius: 8px; }
+
+        .btn-block { display: block; width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 8px; font-size: 16px; margin-top: 20px; }
+        .btn-secondary { background-color: #6c757d; margin-top: 10px; }
+    </style>
 </head>
 <body>
 
-    <!-- 沉浸式背景头部 -->
-    <div class="hero-bg">
-        <div class="header-content">
-            <h1>🎣 渔获大师</h1>
-            <div class="weather-badge" id="weather-badge">
-                <span class="icon">☁️</span>
-                <span class="text">获取位置中...</span>
-            </div>
+    <!-- 首页：列表展示 -->
+    <div id="home-page" class="page active">
+        <div class="header">我的渔获 (总数: <span id="total-count">0</span>)</div>
+        <div id="record-list">
+            <!-- 记录会插在这里 -->
+            <div style="text-align: center; margin-top: 50px; color: #999;">还没有记录，快去钓一条吧！</div>
         </div>
+        <!-- 悬浮添加按钮 -->
+        <div class="fab" onclick="showAddPage()">+</div>
     </div>
 
-    <main id="app">
-        <!-- 核心操作区 -->
-        <section id="step-input" class="active fade-in">
+    <!-- 添加页：表单 -->
+    <div id="add-page" class="page">
+        <div class="header">记一笔</div>
+        <form id="add-form" style="margin-top: 20px;">
             
-            <!-- 钓法选择卡片 -->
-            <div class="card info-card">
-                <label class="card-label">今日作钓方式</label>
-                <div class="select-wrapper">
-                    <select id="fishing-method">
-                        <option value="taiwan">🎏 台钓 (手竿)</option>
-                        <option value="lure">🎣 路亚 (Lure)</option>
-                        <option value="fly">🦋 飞钓 (Fly)</option>
-                        <option value="sea">🌊 海钓 (Sea)</option>
-                        <option value="surf">🏖️ 滩钓 (Surf)</option>
-                        <option value="tenkara">🎋 天展钓 (Tenkara)</option>
-                    </select>
-                    <span class="arrow">▼</span>
+            <div class="form-group">
+                <label>钓到了什么？</label>
+                <input type="text" id="fish-type" class="form-control" placeholder="例如：鲫鱼、鲤鱼" required>
+            </div>
+
+            <div class="form-group">
+                <label>有多重？(斤)</label>
+                <input type="number" id="fish-weight" class="form-control" step="0.1" placeholder="0.0">
+            </div>
+
+            <div class="form-group">
+                <label>什么时候？</label>
+                <input type="date" id="fish-date" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label>拍张照 (点击选择)</label>
+                <!-- 关键修改：accept="image/*" 允许手机选图 -->
+                <input type="file" id="fish-photo" class="form-control" accept="image/*" onchange="previewFile()">
+                <div id="preview-container">
+                    <img id="preview-img" src="">
                 </div>
             </div>
 
-            <!-- 核心功能：拍照 -->
-            <div class="action-area">
-                <div class="camera-btn-wrapper">
-                    <input type="file" id="fish-photo" accept="image/*">
-                    <button id="btn-camera" class="pulse-btn">
-                        <span class="cam-icon">📷</span>
-                        <span class="cam-text">扫描水域</span>
-                    </button>
-                </div>
-                <p class="hint-text">拍摄水面，AI 自动分析藏鱼点</p>
-            </div>
+            <button type="submit" class="btn-block">保存记录</button>
+            <button type="button" class="btn-block btn-secondary" onclick="showHomePage()">取消</button>
+        </form>
+    </div>
 
-            <!-- 底部小工具 -->
-            <div class="mini-tools">
-                <button id="btn-refresh-loc" class="tool-pill">📍 刷新定位</button>
-            </div>
-        </section>
+    <script>
+        // === 1. 页面切换逻辑 ===
+        function showAddPage() {
+            document.getElementById('home-page').classList.remove('active');
+            document.getElementById('add-page').classList.add('active');
+            // 默认填入今天日期
+            document.getElementById('fish-date').valueAsDate = new Date();
+        }
 
-        <!-- 分析结果页 -->
-        <section id="step-result" class="slide-up">
-            <div class="result-header">
-                <h2>分析报告</h2>
-                <button id="btn-retry" class="close-btn">✕</button>
-            </div>
+        function showHomePage() {
+            document.getElementById('add-page').classList.remove('active');
+            document.getElementById('home-page').classList.add('active');
+            document.getElementById('add-form').reset();
+            document.getElementById('preview-container').style.display = 'none';
+        }
 
-            <div class="canvas-wrapper">
-                <canvas id="photo-canvas"></canvas>
-                <!-- 加载动画 -->
-                <div id="loading-overlay" class="hidden">
-                    <div class="radar-spinner"></div>
-                    <p>AI 正在识别水流结构...</p>
-                </div>
-            </div>
+        // === 2. 图片预览逻辑 ===
+        let currentBase64Img = null; // 临时存图片数据
+
+        function previewFile() {
+            const preview = document.getElementById('preview-img');
+            const container = document.getElementById('preview-container');
+            const file = document.querySelector('input[type=file]').files[0];
+            const reader = new FileReader();
+
+            reader.addEventListener("load", function () {
+                // 图片加载完，显示预览
+                preview.src = reader.result;
+                container.style.display = 'block';
+                currentBase64Img = reader.result; // 存起来准备保存
+            }, false);
+
+            if (file) {
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // === 3. 保存数据逻辑 ===
+        document.getElementById('add-form').addEventListener('submit', function(e) {
+            e.preventDefault(); // 阻止表单默认提交刷新
+
+            const type = document.getElementById('fish-type').value;
+            const weight = document.getElementById('fish-weight').value;
+            const date = document.getElementById('fish-date').value;
             
-            <div class="card analysis-card">
-                <div class="tag">💡 作钓建议</div>
-                <p id="strategy-text" class="typing-effect">...</p>
-            </div>
+            // 创建一条新记录对象
+            const newRecord = {
+                id: Date.now(), // 用时间戳做唯一ID
+                type: type,
+                weight: weight || '未知',
+                date: date,
+                // 如果有图片就存图片，没有就用默认的灰色方块
+                photo: currentBase64Img || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2NjYyIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkeT0iLjNlbSIgZmlsbD0iIzU1NSIgZm9udC1zaXplPSIxMiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+5peg5Zu+PC90ZXh0Pjwvc3ZnPg==' 
+            };
 
-            <button id="btn-feedback" class="secondary-btn">📝 记录本次鱼情</button>
-        </section>
+            // 从本地存储取出旧数据
+            let records = JSON.parse(localStorage.getItem('fishingRecords')) || [];
+            // 加到最前面
+            records.unshift(newRecord);
+            // 存回去
+            try {
+                localStorage.setItem('fishingRecords', JSON.stringify(records));
+            } catch (err) {
+                alert("图片太大了，存储空间不足！建议少传几张图或者截图后再传。");
+            }
 
-        <!-- 反馈页 -->
-        <section id="step-feedback" class="slide-up">
-            <div class="result-header">
-                <h2>鱼情反馈</h2>
-                <button id="btn-cancel-feedback" class="close-btn">✕</button>
-            </div>
-            
-            <div class="card">
-                <div class="input-group">
-                    <label>🐟 渔获数量</label>
-                    <input type="number" id="catch-count" placeholder="0">
+            // 重新渲染列表
+            renderList();
+            showHomePage();
+            currentBase64Img = null; // 清空临时图片
+        });
+
+        // === 4. 渲染列表逻辑 ===
+        function renderList() {
+            const records = JSON.parse(localStorage.getItem('fishingRecords')) || [];
+            const listDiv = document.getElementById('record-list');
+            document.getElementById('total-count').innerText = records.length;
+
+            if (records.length === 0) {
+                listDiv.innerHTML = '<div style="text-align: center; margin-top: 50px; color: #999;">还没有记录，快去钓一条吧！</div>';
+                return;
+            }
+
+            let html = '';
+            records.forEach(record => {
+                html += `
+                <div class="card">
+                    <img src="${record.photo}" class="fish-thumb">
+                    <div class="fish-info">
+                        <h3>${record.type} <span style="font-size:12px;color:#999">(${record.date})</span></h3>
+                        <p>重量: ${record.weight} 斤</p>
+                    </div>
                 </div>
-                <div class="input-group">
-                    <label>🐛 有效饵料</label>
-                    <input type="text" id="bait-used" placeholder="例：蓝鲫、亮片...">
-                </div>
-                <div class="input-group">
-                    <label>📍 标点修正</label>
-                    <textarea id="spot-feedback" rows="3" placeholder="实际鱼在哪？"></textarea>
-                </div>
-            </div>
-            <button id="btn-submit-feedback" class="primary-btn big-shadow">提交优化模型</button>
-        </section>
+                `;
+            });
+            listDiv.innerHTML = html;
+        }
 
-    </main>
+        // 页面一打开就渲染列表
+        renderList();
 
-    <script src="app.js"></script>
+    </script>
 </body>
 </html>
