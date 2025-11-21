@@ -2,188 +2,279 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <!-- 这一行保证手机端显示正常，禁止缩放 -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>我的钓鱼日记</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>渔获大师</title>
+    <link rel="stylesheet" href="style.css">
+    
     <style>
-        /* === 简单的样式设计 === */
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f7f6; color: #333; }
-        .page { display: none; padding: 20px; padding-bottom: 80px; }
-        .page.active { display: block; }
+        /* 新增的样式 */
+        .section-hidden { display: none !important; }
+        .section-visible { display: block !important; }
         
-        /* 顶部导航栏 */
-        .header { background-color: #007bff; color: white; padding: 15px; text-align: center; font-size: 18px; font-weight: bold; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        /* 结果页样式优化 */
+        .canvas-wrapper {
+            position: relative;
+            margin: 15px 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        #photo-canvas {
+            width: 100%;
+            display: block;
+            background: #f0f0f0;
+        }
         
-        /* 卡片样式 */
-        .card { background: white; border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; align-items: center; }
-        .fish-thumb { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; margin-right: 15px; background-color: #eee; }
-        .fish-info h3 { margin: 0 0 5px 0; font-size: 16px; }
-        .fish-info p { margin: 0; color: #666; font-size: 14px; }
+        /* 标点解释列表 */
+        .point-legend {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .legend-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+        }
+        .legend-item:last-child { border-bottom: none; margin-bottom: 0; }
         
-        /* 底部按钮 */
-        .fab { position: fixed; bottom: 25px; right: 25px; width: 60px; height: 60px; background-color: #007bff; color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 30px; box-shadow: 0 4px 10px rgba(0,123,255,0.4); cursor: pointer; user-select: none; }
-        
-        /* 表单样式 */
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-        .form-control { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        
-        /* 图片上传预览 */
-        #preview-container { margin-top: 10px; text-align: center; display: none; }
-        #preview-img { max-width: 100%; max-height: 200px; border-radius: 8px; }
+        .point-badge {
+            background: #ff4757;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 24px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+        .point-text h4 { margin: 0 0 4px 0; font-size: 15px; color: #333; }
+        .point-text p { margin: 0; font-size: 13px; color: #666; line-height: 1.4; }
 
-        .btn-block { display: block; width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 8px; font-size: 16px; margin-top: 20px; }
-        .btn-secondary { background-color: #6c757d; margin-top: 10px; }
+        /* 加载遮罩 */
+        #loading-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 10;
+        }
     </style>
 </head>
 <body>
 
-    <!-- 首页：列表展示 -->
-    <div id="home-page" class="page active">
-        <div class="header">我的渔获 (总数: <span id="total-count">0</span>)</div>
-        <div id="record-list">
-            <!-- 记录会插在这里 -->
-            <div style="text-align: center; margin-top: 50px; color: #999;">还没有记录，快去钓一条吧！</div>
+    <!-- 头部 -->
+    <div class="hero-bg">
+        <div class="header-content">
+            <h1>🎣 渔获大师</h1>
+            <div class="weather-badge" id="weather-badge">
+                <span class="icon" id="w-icon">⏳</span>
+                <span class="text" id="w-text">获取天气...</span>
+            </div>
         </div>
-        <!-- 悬浮添加按钮 -->
-        <div class="fab" onclick="showAddPage()">+</div>
     </div>
 
-    <!-- 添加页：表单 -->
-    <div id="add-page" class="page">
-        <div class="header">记一笔</div>
-        <form id="add-form" style="margin-top: 20px;">
-            
-            <div class="form-group">
-                <label>钓到了什么？</label>
-                <input type="text" id="fish-type" class="form-control" placeholder="例如：鲫鱼、鲤鱼" required>
-            </div>
-
-            <div class="form-group">
-                <label>有多重？(斤)</label>
-                <input type="number" id="fish-weight" class="form-control" step="0.1" placeholder="0.0">
-            </div>
-
-            <div class="form-group">
-                <label>什么时候？</label>
-                <input type="date" id="fish-date" class="form-control" required>
-            </div>
-
-            <div class="form-group">
-                <label>拍张照 (点击选择)</label>
-                <!-- 关键修改：accept="image/*" 允许手机选图 -->
-                <input type="file" id="fish-photo" class="form-control" accept="image/*" onchange="previewFile()">
-                <div id="preview-container">
-                    <img id="preview-img" src="">
+    <main id="app">
+        <!-- 步骤1：输入与拍照 -->
+        <section id="step-input" class="section-visible fade-in">
+            <div class="card info-card">
+                <label class="card-label">今日作钓方式</label>
+                <div class="select-wrapper">
+                    <select id="fishing-method">
+                        <option value="taiwan">🎏 台钓 (手竿)</option>
+                        <option value="lure">🎣 路亚 (Lure)</option>
+                        <option value="fly">🦋 飞钓 (Fly)</option>
+                    </select>
+                    <span class="arrow">▼</span>
                 </div>
             </div>
 
-            <button type="submit" class="btn-block">保存记录</button>
-            <button type="button" class="btn-block btn-secondary" onclick="showHomePage()">取消</button>
-        </form>
-    </div>
+            <div class="action-area">
+                <div class="camera-btn-wrapper">
+                    <!-- 不强制调起相机，允许选图 -->
+                    <input type="file" id="camera-input" accept="image/*" style="display:none;"> 
+                    <button id="btn-camera" class="pulse-btn" onclick="triggerCamera()">
+                        <span class="cam-icon">📷</span>
+                        <span class="cam-text">扫描水域 / 选图</span>
+                    </button>
+                </div>
+                <p class="hint-text">AI 自动识别结构、障碍物与鱼道</p>
+            </div>
+        </section>
+
+        <!-- 步骤2：分析结果 -->
+        <section id="step-result" class="section-hidden slide-up">
+            <div class="result-header">
+                <h2>🔎 水域分析报告</h2>
+                <button class="close-btn" onclick="resetApp()">重选</button>
+            </div>
+
+            <!-- 图片与画布 -->
+            <div class="canvas-wrapper">
+                <canvas id="photo-canvas"></canvas>
+                <div id="loading-overlay" class="hidden">
+                    <div style="font-size:30px;">🤖</div>
+                    <p>正在计算水底结构...</p>
+                </div>
+            </div>
+            
+            <!-- 这里的标点解释是动态生成的 -->
+            <div class="point-legend" id="analysis-list">
+                <p style="color:#999; text-align:center;">等待分析...</p>
+            </div>
+
+            <div class="card analysis-card">
+                <div class="tag">💡 综合建议</div>
+                <p id="strategy-text">...</p>
+            </div>
+        </section>
+    </main>
 
     <script>
-        // === 1. 页面切换逻辑 ===
-        function showAddPage() {
-            document.getElementById('home-page').classList.remove('active');
-            document.getElementById('add-page').classList.add('active');
-            // 默认填入今天日期
-            document.getElementById('fish-date').valueAsDate = new Date();
-        }
-
-        function showHomePage() {
-            document.getElementById('add-page').classList.remove('active');
-            document.getElementById('home-page').classList.add('active');
-            document.getElementById('add-form').reset();
-            document.getElementById('preview-container').style.display = 'none';
-        }
-
-        // === 2. 图片预览逻辑 ===
-        let currentBase64Img = null; // 临时存图片数据
-
-        function previewFile() {
-            const preview = document.getElementById('preview-img');
-            const container = document.getElementById('preview-container');
-            const file = document.querySelector('input[type=file]').files[0];
-            const reader = new FileReader();
-
-            reader.addEventListener("load", function () {
-                // 图片加载完，显示预览
-                preview.src = reader.result;
-                container.style.display = 'block';
-                currentBase64Img = reader.result; // 存起来准备保存
-            }, false);
-
-            if (file) {
-                reader.readAsDataURL(file);
-            }
-        }
-
-        // === 3. 保存数据逻辑 ===
-        document.getElementById('add-form').addEventListener('submit', function(e) {
-            e.preventDefault(); // 阻止表单默认提交刷新
-
-            const type = document.getElementById('fish-type').value;
-            const weight = document.getElementById('fish-weight').value;
-            const date = document.getElementById('fish-date').value;
+        // ==========================================
+        // 1. 天气锁定逻辑 (解决天气跳变问题)
+        // ==========================================
+        function initWeather() {
+            // 尝试从 sessionStorage 获取缓存的天气
+            let savedWeather = sessionStorage.getItem('fishing_weather');
             
-            // 创建一条新记录对象
-            const newRecord = {
-                id: Date.now(), // 用时间戳做唯一ID
-                type: type,
-                weight: weight || '未知',
-                date: date,
-                // 如果有图片就存图片，没有就用默认的灰色方块
-                photo: currentBase64Img || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI2NjYyIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkeT0iLjNlbSIgZmlsbD0iIzU1NSIgZm9udC1zaXplPSIxMiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+5peg5Zu+PC90ZXh0Pjwvc3ZnPg==' 
-            };
-
-            // 从本地存储取出旧数据
-            let records = JSON.parse(localStorage.getItem('fishingRecords')) || [];
-            // 加到最前面
-            records.unshift(newRecord);
-            // 存回去
-            try {
-                localStorage.setItem('fishingRecords', JSON.stringify(records));
-            } catch (err) {
-                alert("图片太大了，存储空间不足！建议少传几张图或者截图后再传。");
+            if (!savedWeather) {
+                // 如果没有，生成一次并存起来
+                const weathers = [
+                    {icon: "🌤️", text: "多云 24°C 气压1005hPa"},
+                    {icon: "☁️", text: "阴天 22°C 微风二级"},
+                    {icon: "🌦️", text: "小雨 20°C 气压1012hPa"}
+                ];
+                // 随机选一个
+                savedWeather = JSON.stringify(weathers[Math.floor(Math.random() * weathers.length)]);
+                sessionStorage.setItem('fishing_weather', savedWeather);
             }
+            
+            const weatherData = JSON.parse(savedWeather);
+            document.getElementById('w-icon').innerText = weatherData.icon;
+            document.getElementById('w-text').innerText = weatherData.text;
+        }
 
-            // 重新渲染列表
-            renderList();
-            showHomePage();
-            currentBase64Img = null; // 清空临时图片
+        // 页面加载时立刻运行天气初始化
+        window.addEventListener('load', initWeather);
+
+
+        // ==========================================
+        // 2. 拍照与标点绘图逻辑 (解决标点解释问题)
+        // ==========================================
+        function triggerCamera() {
+            document.getElementById('camera-input').click();
+        }
+
+        document.getElementById('camera-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // 切换界面
+            document.getElementById('step-input').classList.remove('section-visible');
+            document.getElementById('step-input').classList.add('section-hidden');
+            document.getElementById('step-result').classList.remove('section-hidden');
+            document.getElementById('step-result').classList.add('section-visible');
+
+            // 显示加载中
+            const loading = document.getElementById('loading-overlay');
+            loading.style.display = 'flex'; // 改为 flex 居中
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.getElementById('photo-canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // 适配宽度，高度自适应
+                    canvas.width = 600; // 内部渲染分辨率高一点
+                    canvas.height = 600 * (img.height / img.width);
+                    
+                    // 绘制底图
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    // 模拟耗时分析
+                    setTimeout(() => {
+                        // 1. 在图上画红点 (模拟两个点)
+                        // 点1：画布宽度的 30%, 高度的 60%
+                        drawMarker(ctx, canvas.width * 0.3, canvas.height * 0.6, "1");
+                        // 点2：画布宽度的 70%, 高度的 40%
+                        drawMarker(ctx, canvas.width * 0.7, canvas.height * 0.4, "2");
+
+                        // 2. 生成下方的文字解释
+                        generateAnalysisText();
+
+                        // 3. 隐藏加载动画
+                        loading.style.display = 'none';
+                    }, 1500);
+                }
+                img.src = event.target.result;
+            }
+            reader.readAsDataURL(file);
         });
 
-        // === 4. 渲染列表逻辑 ===
-        function renderList() {
-            const records = JSON.parse(localStorage.getItem('fishingRecords')) || [];
-            const listDiv = document.getElementById('record-list');
-            document.getElementById('total-count').innerText = records.length;
+        // 辅助函数：在 Canvas 上画一个带数字的红圈
+        function drawMarker(ctx, x, y, num) {
+            // 外圈红圈
+            ctx.beginPath();
+            ctx.arc(x, y, 20, 0, 2 * Math.PI);
+            ctx.fillStyle = 'rgba(255, 71, 87, 0.8)'; // 半透明红
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = 'white';
+            ctx.stroke();
 
-            if (records.length === 0) {
-                listDiv.innerHTML = '<div style="text-align: center; margin-top: 50px; color: #999;">还没有记录，快去钓一条吧！</div>';
-                return;
-            }
-
-            let html = '';
-            records.forEach(record => {
-                html += `
-                <div class="card">
-                    <img src="${record.photo}" class="fish-thumb">
-                    <div class="fish-info">
-                        <h3>${record.type} <span style="font-size:12px;color:#999">(${record.date})</span></h3>
-                        <p>重量: ${record.weight} 斤</p>
-                    </div>
-                </div>
-                `;
-            });
-            listDiv.innerHTML = html;
+            // 数字
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(num, x, y);
         }
 
-        // 页面一打开就渲染列表
-        renderList();
+        // 辅助函数：生成解释文字
+        function generateAnalysisText() {
+            const listHtml = `
+                <div class="legend-item">
+                    <div class="point-badge">1</div>
+                    <div class="point-text">
+                        <h4>深浅交界处</h4>
+                        <p>此处水色变深，推测有坎位结构。适合在该点前后 1 米搜索大鲫鱼。</p>
+                    </div>
+                </div>
+                <div class="legend-item">
+                    <div class="point-badge">2</div>
+                    <div class="point-text">
+                        <h4>缓流回湾区</h4>
+                        <p>水面有波纹变化，疑似有水下障碍物阻挡水流。是鲤鱼藏身的绝佳标点。</p>
+                    </div>
+                </div>
+            `;
+            document.getElementById('analysis-list').innerHTML = listHtml;
+            
+            document.getElementById('strategy-text').innerText = 
+                "根据今日气压偏低的情况，建议主攻 1号标点，使用较轻的吃铅量（1.5g左右），饵料增加腥味比重。";
+        }
 
+        function resetApp() {
+            document.getElementById('step-result').classList.remove('section-visible');
+            document.getElementById('step-result').classList.add('section-hidden');
+            document.getElementById('step-input').classList.remove('section-hidden');
+            document.getElementById('step-input').classList.add('section-visible');
+            document.getElementById('camera-input').value = '';
+        }
     </script>
 </body>
 </html>
