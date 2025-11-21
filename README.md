@@ -1,0 +1,2 @@
+# smartfishing
+ai fisherman help
