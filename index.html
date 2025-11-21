@@ -7,11 +7,10 @@
     <link rel="stylesheet" href="style.css">
     
     <style>
-        /* 新增的样式 */
         .section-hidden { display: none !important; }
         .section-visible { display: block !important; }
         
-        /* 结果页样式优化 */
+        /* 结果页样式 */
         .canvas-wrapper {
             position: relative;
             margin: 15px 0;
@@ -91,10 +90,14 @@
             <div class="card info-card">
                 <label class="card-label">今日作钓方式</label>
                 <div class="select-wrapper">
+                    <!-- 这里完全恢复了你最初的选项 -->
                     <select id="fishing-method">
                         <option value="taiwan">🎏 台钓 (手竿)</option>
                         <option value="lure">🎣 路亚 (Lure)</option>
                         <option value="fly">🦋 飞钓 (Fly)</option>
+                        <option value="sea">🌊 海钓 (Sea)</option>
+                        <option value="surf">🏖️ 滩钓 (Surf)</option>
+                        <option value="tenkara">🎋 天展钓 (Tenkara)</option>
                     </select>
                     <span class="arrow">▼</span>
                 </div>
@@ -102,40 +105,37 @@
 
             <div class="action-area">
                 <div class="camera-btn-wrapper">
-                    <!-- 不强制调起相机，允许选图 -->
                     <input type="file" id="camera-input" accept="image/*" style="display:none;"> 
                     <button id="btn-camera" class="pulse-btn" onclick="triggerCamera()">
                         <span class="cam-icon">📷</span>
-                        <span class="cam-text">扫描水域 / 选图</span>
+                        <span class="cam-text">拍摄/上传钓点环境</span>
                     </button>
                 </div>
-                <p class="hint-text">AI 自动识别结构、障碍物与鱼道</p>
+                <p class="hint-text">基于钓法与环境，智能生成作钓策略</p>
             </div>
         </section>
 
         <!-- 步骤2：分析结果 -->
         <section id="step-result" class="section-hidden slide-up">
             <div class="result-header">
-                <h2>🔎 水域分析报告</h2>
+                <h2>🔎 环境分析报告</h2>
                 <button class="close-btn" onclick="resetApp()">重选</button>
             </div>
 
-            <!-- 图片与画布 -->
             <div class="canvas-wrapper">
                 <canvas id="photo-canvas"></canvas>
                 <div id="loading-overlay" class="hidden">
-                    <div style="font-size:30px;">🤖</div>
-                    <p>正在计算水底结构...</p>
+                    <div style="font-size:30px;">⚙️</div>
+                    <p>正在结合钓法分析水情...</p>
                 </div>
             </div>
             
-            <!-- 这里的标点解释是动态生成的 -->
             <div class="point-legend" id="analysis-list">
-                <p style="color:#999; text-align:center;">等待分析...</p>
+                <!-- 动态生成 -->
             </div>
 
             <div class="card analysis-card">
-                <div class="tag">💡 综合建议</div>
+                <div class="tag">💡 战术建议</div>
                 <p id="strategy-text">...</p>
             </div>
         </section>
@@ -143,35 +143,78 @@
 
     <script>
         // ==========================================
-        // 1. 天气锁定逻辑 (解决天气跳变问题)
+        // 1. 智能逻辑库 (这是本次修改的核心)
         // ==========================================
+        // 这里不再是随机废话，而是根据钓法定制的专业术语
+        const FISHING_LOGIC = {
+            taiwan: { // 台钓
+                points: [
+                    { title: "深浅交界坎位", desc: "水色变化处，底部有明显落差，是大鱼巡游的必经之路，适合定点守钓。" },
+                    { title: "水草/障碍边缘", desc: "亮水与障碍物交界处，藏鱼且有安全感，建议在此处打窝。" }
+                ],
+                strategy: "台钓策略：针对当前环境，建议调四钓二。若有走水，可适当跑铅。饵料建议使用搓饵防小鱼闹窝。"
+            },
+            lure: { // 路亚
+                points: [
+                    { title: "标点A：结构区", desc: "水下疑似有乱石或树枝，是掠食性鱼类伏击的典型结构，重点搜索。" },
+                    { title: "标点B：流速变化带", desc: "主流与回流的交汇处，溶氧高且有饵鱼聚集，建议使用米诺或亮片。" }
+                ],
+                strategy: "路亚策略：建议先用搜索饵（如VIB）快速探查活性，随后针对结构区使用软虫精细跳底。"
+            },
+            fly: { // 飞钓
+                points: [
+                    { title: "上游激流区", desc: "水流湍急，溶氧丰富，可能有溪红点鲑或马口在石头后躲避水流。" },
+                    { title: "下游缓流带", desc: "水面开阔，适合抛投干蝇，注意观察水面是否有炸水信号。" }
+                ],
+                strategy: "飞钓策略：注意身后的抛投空间。建议先使用干蝇试探表层，无口则换若虫搜索中下层。"
+            },
+            sea: { // 海钓
+                points: [
+                    { title: "潮汐流痕", desc: "海面波纹异常处，显示下方有暗礁或海流交汇，是鲷科鱼类聚集地。" },
+                    { title: "防波堤根部", desc: "堤坝根部乱石区，常驻石斑或黑鲷，容易挂底但鱼获往往不错。" }
+                ],
+                strategy: "海钓策略：请务必关注潮汐表。当前建议使用沉底钓法，挂活虾或沙蚕，注意防滑。"
+            },
+            surf: { // 滩钓
+                points: [
+                    { title: "第一道浪坑", desc: "离岸最近的深坑，随着潮水上涨，鱼群会进入此处觅食。" },
+                    { title: "离岸流区域", desc: "水流向外拉出的区域，能将食物带入深海，大鱼常在远处等待。" }
+                ],
+                strategy: "滩钓策略：建议使用远投竿，加重铅坠以抗风浪。寻找浪花破碎后的平静区域下竿。"
+            },
+            tenkara: { // 天展
+                points: [
+                    { title: "石头后方涡流", desc: "典型天展标点，鱼在石头后方节省体力并等待上游冲下来的食物。" },
+                    { title: "树荫覆盖区", desc: "上方有树木遮挡，掉落的昆虫较多，且光线较暗，鱼警惕性低。" }
+                ],
+                strategy: "天展策略：利用长竿短线的优势，尽量让毛钩自然漂流，减少人为拖拽的痕迹。"
+            }
+        };
+
+        // ==========================================
+        // 2. 天气模块 (保持不变，防止跳变)
+        // ==========================================
+        let currentWeather = {}; // 全局变量存储当前天气
+
         function initWeather() {
-            // 尝试从 sessionStorage 获取缓存的天气
             let savedWeather = sessionStorage.getItem('fishing_weather');
-            
             if (!savedWeather) {
-                // 如果没有，生成一次并存起来
                 const weathers = [
-                    {icon: "🌤️", text: "多云 24°C 气压1005hPa"},
-                    {icon: "☁️", text: "阴天 22°C 微风二级"},
-                    {icon: "🌦️", text: "小雨 20°C 气压1012hPa"}
+                    {icon: "🌤️", text: "多云 24°C 气压1005hPa", type: "cloudy"},
+                    {icon: "☁️", text: "阴天 22°C 微风二级", type: "overcast"},
+                    {icon: "🌦️", text: "小雨 20°C 气压1012hPa", type: "rain"}
                 ];
-                // 随机选一个
                 savedWeather = JSON.stringify(weathers[Math.floor(Math.random() * weathers.length)]);
                 sessionStorage.setItem('fishing_weather', savedWeather);
             }
-            
-            const weatherData = JSON.parse(savedWeather);
-            document.getElementById('w-icon').innerText = weatherData.icon;
-            document.getElementById('w-text').innerText = weatherData.text;
+            currentWeather = JSON.parse(savedWeather);
+            document.getElementById('w-icon').innerText = currentWeather.icon;
+            document.getElementById('w-text').innerText = currentWeather.text;
         }
-
-        // 页面加载时立刻运行天气初始化
         window.addEventListener('load', initWeather);
 
-
         // ==========================================
-        // 2. 拍照与标点绘图逻辑 (解决标点解释问题)
+        // 3. 核心交互逻辑
         // ==========================================
         function triggerCamera() {
             document.getElementById('camera-input').click();
@@ -181,15 +224,17 @@
             const file = e.target.files[0];
             if (!file) return;
 
-            // 切换界面
+            // 1. 获取用户选择的钓法
+            const method = document.getElementById('fishing-method').value;
+
+            // 界面切换
             document.getElementById('step-input').classList.remove('section-visible');
             document.getElementById('step-input').classList.add('section-hidden');
             document.getElementById('step-result').classList.remove('section-hidden');
             document.getElementById('step-result').classList.add('section-visible');
 
-            // 显示加载中
             const loading = document.getElementById('loading-overlay');
-            loading.style.display = 'flex'; // 改为 flex 居中
+            loading.style.display = 'flex';
 
             const reader = new FileReader();
             reader.onload = function(event) {
@@ -197,75 +242,79 @@
                 img.onload = function() {
                     const canvas = document.getElementById('photo-canvas');
                     const ctx = canvas.getContext('2d');
-                    
-                    // 适配宽度，高度自适应
-                    canvas.width = 600; // 内部渲染分辨率高一点
+                    canvas.width = 600;
                     canvas.height = 600 * (img.height / img.width);
-                    
-                    // 绘制底图
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-                    // 模拟耗时分析
                     setTimeout(() => {
-                        // 1. 在图上画红点 (模拟两个点)
-                        // 点1：画布宽度的 30%, 高度的 60%
-                        drawMarker(ctx, canvas.width * 0.3, canvas.height * 0.6, "1");
-                        // 点2：画布宽度的 70%, 高度的 40%
-                        drawMarker(ctx, canvas.width * 0.7, canvas.height * 0.4, "2");
+                        // 2. 根据钓法，决定标点画在哪里 (稍微做一点区分)
+                        // 如果是台钓/手竿，标点一般比较近；如果是海钓/路亚，标点可能在远一点
+                        let p1_y = method === 'taiwan' || method === 'tenkara' ? 0.7 : 0.4;
+                        let p2_y = method === 'taiwan' || method === 'tenkara' ? 0.6 : 0.5;
 
-                        // 2. 生成下方的文字解释
-                        generateAnalysisText();
+                        drawMarker(ctx, canvas.width * 0.3, canvas.height * p1_y, "1");
+                        drawMarker(ctx, canvas.width * 0.75, canvas.height * p2_y, "2");
 
-                        // 3. 隐藏加载动画
+                        // 3. 生成真正关联的分析文本
+                        generateAnalysis(method);
+
                         loading.style.display = 'none';
-                    }, 1500);
+                    }, 1200);
                 }
                 img.src = event.target.result;
             }
             reader.readAsDataURL(file);
         });
 
-        // 辅助函数：在 Canvas 上画一个带数字的红圈
         function drawMarker(ctx, x, y, num) {
-            // 外圈红圈
             ctx.beginPath();
-            ctx.arc(x, y, 20, 0, 2 * Math.PI);
-            ctx.fillStyle = 'rgba(255, 71, 87, 0.8)'; // 半透明红
+            ctx.arc(x, y, 15, 0, 2 * Math.PI);
+            ctx.fillStyle = 'rgba(255, 71, 87, 0.9)';
             ctx.fill();
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 2;
             ctx.strokeStyle = 'white';
             ctx.stroke();
-
-            // 数字
             ctx.fillStyle = 'white';
-            ctx.font = 'bold 20px Arial';
+            ctx.font = 'bold 16px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(num, x, y);
         }
 
-        // 辅助函数：生成解释文字
-        function generateAnalysisText() {
+        // 核心：生成逻辑自洽的文本
+        function generateAnalysis(method) {
+            // 获取预设的逻辑库
+            const data = FISHING_LOGIC[method];
+            
+            // 结合天气微调建议
+            let weatherAdvice = "";
+            if (currentWeather.type === 'rain') {
+                weatherAdvice = " 今日有雨，溶氧量高，鱼口活跃，可适当钓浅。";
+            } else if (currentWeather.type === 'overcast') {
+                weatherAdvice = " 阴天光线适宜，全天均可作钓。";
+            }
+
+            // 渲染列表
             const listHtml = `
                 <div class="legend-item">
                     <div class="point-badge">1</div>
                     <div class="point-text">
-                        <h4>深浅交界处</h4>
-                        <p>此处水色变深，推测有坎位结构。适合在该点前后 1 米搜索大鲫鱼。</p>
+                        <h4>${data.points[0].title}</h4>
+                        <p>${data.points[0].desc}</p>
                     </div>
                 </div>
                 <div class="legend-item">
                     <div class="point-badge">2</div>
                     <div class="point-text">
-                        <h4>缓流回湾区</h4>
-                        <p>水面有波纹变化，疑似有水下障碍物阻挡水流。是鲤鱼藏身的绝佳标点。</p>
+                        <h4>${data.points[1].title}</h4>
+                        <p>${data.points[1].desc}</p>
                     </div>
                 </div>
             `;
             document.getElementById('analysis-list').innerHTML = listHtml;
             
-            document.getElementById('strategy-text').innerText = 
-                "根据今日气压偏低的情况，建议主攻 1号标点，使用较轻的吃铅量（1.5g左右），饵料增加腥味比重。";
+            // 渲染综合建议 (策略 + 天气修正)
+            document.getElementById('strategy-text').innerText = data.strategy + weatherAdvice;
         }
 
         function resetApp() {
