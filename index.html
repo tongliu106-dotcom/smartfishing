@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>渔获大师</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#4FACFE"> 
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+</head>
+<body>
+
+    <!-- 沉浸式背景头部 -->
+    <div class="hero-bg">
+        <div class="header-content">
+            <h1>🎣 渔获大师</h1>
+            <div class="weather-badge" id="weather-badge">
+                <span class="icon">☁️</span>
+                <span class="text">获取位置中...</span>
+            </div>
+        </div>
+    </div>
+
+    <main id="app">
+        <!-- 核心操作区 -->
+        <section id="step-input" class="active fade-in">
+            
+            <!-- 钓法选择卡片 -->
+            <div class="card info-card">
+                <label class="card-label">今日作钓方式</label>
+                <div class="select-wrapper">
+                    <select id="fishing-method">
+                        <option value="taiwan">🎏 台钓 (手竿)</option>
+                        <option value="lure">🎣 路亚 (Lure)</option>
+                        <option value="fly">🦋 飞钓 (Fly)</option>
+                        <option value="sea">🌊 海钓 (Sea)</option>
+                        <option value="surf">🏖️ 滩钓 (Surf)</option>
+                        <option value="tenkara">🎋 天展钓 (Tenkara)</option>
+                    </select>
+                    <span class="arrow">▼</span>
+                </div>
+            </div>
+
+            <!-- 核心功能：拍照 -->
+            <div class="action-area">
+                <div class="camera-btn-wrapper">
+                    <input type="file" id="camera-input" accept="image/*" capture="environment">
+                    <button id="btn-camera" class="pulse-btn">
+                        <span class="cam-icon">📷</span>
+                        <span class="cam-text">扫描水域</span>
+                    </button>
+                </div>
+                <p class="hint-text">拍摄水面，AI 自动分析藏鱼点</p>
+            </div>
+
+            <!-- 底部小工具 -->
+            <div class="mini-tools">
+                <button id="btn-refresh-loc" class="tool-pill">📍 刷新定位</button>
+            </div>
+        </section>
+
+        <!-- 分析结果页 -->
+        <section id="step-result" class="slide-up">
+            <div class="result-header">
+                <h2>分析报告</h2>
+                <button id="btn-retry" class="close-btn">✕</button>
+            </div>
+
+            <div class="canvas-wrapper">
+                <canvas id="photo-canvas"></canvas>
+                <!-- 加载动画 -->
+                <div id="loading-overlay" class="hidden">
+                    <div class="radar-spinner"></div>
+                    <p>AI 正在识别水流结构...</p>
+                </div>
+            </div>
+            
+            <div class="card analysis-card">
+                <div class="tag">💡 作钓建议</div>
+                <p id="strategy-text" class="typing-effect">...</p>
+            </div>
+
+            <button id="btn-feedback" class="secondary-btn">📝 记录本次鱼情</button>
+        </section>
+
+        <!-- 反馈页 -->
+        <section id="step-feedback" class="slide-up">
+            <div class="result-header">
+                <h2>鱼情反馈</h2>
+                <button id="btn-cancel-feedback" class="close-btn">✕</button>
+            </div>
+            
+            <div class="card">
+                <div class="input-group">
+                    <label>🐟 渔获数量</label>
+                    <input type="number" id="catch-count" placeholder="0">
+                </div>
+                <div class="input-group">
+                    <label>🐛 有效饵料</label>
+                    <input type="text" id="bait-used" placeholder="例：蓝鲫、亮片...">
+                </div>
+                <div class="input-group">
+                    <label>📍 标点修正</label>
+                    <textarea id="spot-feedback" rows="3" placeholder="实际鱼在哪？"></textarea>
+                </div>
+            </div>
+            <button id="btn-submit-feedback" class="primary-btn big-shadow">提交优化模型</button>
+        </section>
+
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
